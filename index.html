@@ -104,6 +104,11 @@
         <h1>TINGO TANGO</h1>
         <h3>Contrato de Compraventa Internacional</h3>
 
+        <!-- Pista de audio cargada desde el servidor público -->
+        <audio id="cancion-pina" loop preload="auto" crossorigin="anonymous">
+            <source src="https://files.catbox.moe/97a2s2.mp3" type="audio/mpeg">
+        </audio>
+
         <div id="seccion-registro">
             <input type="text" id="nombre-jugador" placeholder="Escribe tu nombre..." />
             <button onclick="registrar()">Unirse al Juego</button>
@@ -124,80 +129,21 @@
     <script>
         const socket = io();
         let miNombre = "";
-        let audioCtx;
-        let intervaloRitmo = null;
+        const musica = document.getElementById('cancion-pina');
 
-        function iniciarAudioContext() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-        }
-
-        // Generador de bombo y bajo potente (Sonido duro)
-        function reproducirGolpe() {
-            if (!audioCtx) return;
-            
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-
-            gain.gain.setValueAtTime(1.0, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.3);
-        }
-
-        function empezarMusica() {
-            iniciarAudioContext();
-            if (intervaloRitmo) clearInterval(intervaloRitmo);
-            // Genera ritmo continuo acelerado
-            intervaloRitmo = setInterval(() => {
-                reproducirGolpe();
-            }, 250); 
-        }
-
-        function detenerMusica() {
-            if (intervaloRitmo) {
-                clearInterval(intervaloRitmo);
-                intervaloRitmo = null;
-            }
-        }
-
-        function sonarAlarmaTango() {
-            iniciarAudioContext();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-            osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 1.2);
-
-            gain.gain.setValueAtTime(1.0, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.2);
-
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            osc.start();
-            osc.stop(audioCtx.currentTime + 1.2);
-        }
+        // Configurar volumen al máximo (1.0)
+        musica.volume = 1.0;
 
         function registrar() {
             const nombre = document.getElementById('nombre-jugador').value.trim();
             if (!nombre) return alert("Por favor ingresa tu nombre");
             miNombre = nombre;
             
-            iniciarAudioContext();
+            // Activa el permiso explícito de audio del navegador en el primer clic
+            musica.play().then(() => {
+                musica.pause();
+                musica.currentTime = 0;
+            }).catch(e => console.log("Audio desbloqueado por interacción:", e));
 
             socket.emit('unirse', nombre);
             document.getElementById('seccion-registro').style.display = 'none';
@@ -216,12 +162,18 @@
 
         socket.on('estadoPelota', (data) => {
             document.getElementById('estado-pantalla').innerHTML = `⚽ La pelota la tiene: <br><b style="color:#00fff5; font-size:24px;">${data.poseedor.nombre}</b>`;
-            empezarMusica();
+            
+            // Iniciar reproducción de la canción de Los De La Piña automáticamente
+            if (musica.paused) {
+                musica.currentTime = 0;
+                musica.play().catch(e => console.log("Error al reproducir audio:", e));
+            }
         });
 
         socket.on('tangoFinal', (data) => {
-            detenerMusica();
-            sonarAlarmaTango();
+            // Detener la canción inmediatamente al salir el TANGO
+            musica.pause();
+            musica.currentTime = 0;
             
             document.getElementById('estado-pantalla').innerHTML = `💥 ¡TANGO! 💥`;
             
