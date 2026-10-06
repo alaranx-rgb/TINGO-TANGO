@@ -96,6 +96,16 @@
             font-size: 18px;
             font-weight: bold;
         }
+        .reproductor-cont {
+            margin: 15px 0;
+            background: #0f3460;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        audio {
+            width: 100%;
+            height: 40px;
+        }
     </style>
 </head>
 <body>
@@ -104,10 +114,13 @@
         <h1>TINGO TANGO</h1>
         <h3>Contrato de Compraventa Internacional</h3>
 
-        <!-- Pista de audio cargada al 100% de volumen -->
-        <audio id="musica-fondo" loop preload="auto">
-            <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mpeg">
-        </audio>
+        <div class="reproductor-cont">
+            <p style="margin: 0 0 5px 0; font-size: 12px; color: #00fff5;">🎵 Música en vivo (Se Vale Too):</p>
+            <audio id="musica-fondo" controls loop preload="auto">
+                <source src="https://ia801503.us.archive.org/15/items/se-vale-too-los-de-la-pina/Se%20Vale%20Too%20-%20Los%20De%20La%20Pina.mp3" type="audio/mpeg">
+                Tu navegador no soporta el reproductor de audio.
+            </audio>
+        </div>
 
         <div id="seccion-registro">
             <input type="text" id="nombre-jugador" placeholder="Escribe tu nombre..." />
@@ -131,10 +144,10 @@
         let miNombre = "";
         const musica = document.getElementById('musica-fondo');
         
-        // Ajustamos el volumen al MÁXIMO del navegador (1.0)
+        // Ajuste de volumen al máximo (1.0)
         musica.volume = 1.0;
 
-        // Efecto potente para el TANGO
+        // Efecto sonoro de alerta cuando cae el TANGO
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
         function sonarTango() {
@@ -144,13 +157,12 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(180, audioCtx.currentTime);
-            // Volumen del tono final al máximo
+            osc.frequency.setValueAtTime(220, audioCtx.currentTime);
             gain.gain.setValueAtTime(1.0, audioCtx.currentTime);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
-            osc.stop(audioCtx.currentTime + 1.5);
+            osc.stop(audioCtx.currentTime + 1.2);
         }
 
         function registrar() {
@@ -158,11 +170,11 @@
             if (!nombre) return alert("Por favor ingresa tu nombre");
             miNombre = nombre;
             
-            // Activa el motor de audio con interacción del usuario
+            // Probar reproductor y habilitar audio
             musica.play().then(() => {
                 musica.pause();
                 musica.currentTime = 0;
-            }).catch(e => console.log(e));
+            }).catch(e => console.log("Permiso de audio pendiente:", e));
 
             socket.emit('unirse', nombre);
             document.getElementById('seccion-registro').style.display = 'none';
@@ -182,15 +194,15 @@
         socket.on('estadoPelota', (data) => {
             document.getElementById('estado-pantalla').innerHTML = `⚽ La pelota la tiene: <br><b style="color:#00fff5; font-size:24px;">${data.poseedor.nombre}</b>`;
             
-            // Reproducir música a todo volumen mientras rueda la pelota
+            // Inicia la música a todo volumen mientras la pelota pasa entre los participantes
             if (musica.paused) {
                 musica.volume = 1.0;
-                musica.play().catch(e => console.log(e));
+                musica.play().catch(e => console.log("Haga clic en Play en el reproductor si no suena:", e));
             }
         });
 
         socket.on('tangoFinal', (data) => {
-            // Cortar la música al instante
+            // Se corta la música al instante al caer el TANGO
             musica.pause();
             musica.currentTime = 0;
             
