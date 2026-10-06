@@ -1,105 +1,198 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tingo Tango Web</title>
-  <script src="/socket.io/socket.io.js"></script>
-  <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #121212; color: white; padding: 20px; }
-    .card { background: #1e1e1e; border-radius: 16px; padding: 25px; margin: 20px auto; max-width: 400px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-    input { padding: 12px; width: 70%; border-radius: 8px; border: 1px solid #333; margin-bottom: 10px; font-size: 16px; text-align: center; }
-    button { background: #e63946; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; }
-    button:hover { background: #d62828; }
-    .pelota { font-size: 2rem; color: #ffb703; font-weight: bold; margin-top: 15px; }
-    .penitencia { background: #2b2b2b; border-left: 4px solid #e63946; padding: 15px; margin-top: 15px; border-radius: 6px; text-align: left; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Cambia el nombre de la pestaña del navegador -->
+    <title>Tingo Tango - Compraventa Internacional</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a2e;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #16213e;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            text-align: center;
+            max-width: 450px;
+            width: 100%;
+        }
+        h1 {
+            color: #e94560;
+            margin-bottom: 5px;
+            font-size: 26px;
+        }
+        h3 {
+            color: #00fff5;
+            margin-top: 0;
+            font-size: 16px;
+            font-weight: 400;
+        }
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input {
+            background-color: #0f3460;
+            color: white;
+            outline: none;
+        }
+        button {
+            background-color: #e94560;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #00fff5;
+            color: #1a1a2e;
+        }
+        #lista-jugadores {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        #lista-jugadores li {
+            background-color: #0f3460;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+        #estado-pantalla {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 20px 0;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #caja-penitencia {
+            background-color: #e94560;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
 
-  <div class="card">
-    <h1>Tingo Tango 🤾</h1>
+    <div class="container">
+        <!-- AQUÍ CAMBIAS EL TÍTULO PRINCIPAL DE LA INTERFAZ -->
+        <h1>TINGO TANGO</h1>
+        <h3>Contrato de Compraventa Internacional</h3>
 
-    <div id="registro">
-      <input type="text" id="nombreInput" placeholder="Ingresa tu nombre">
-      <br>
-      <button onclick="unirme()">Unirme a la Sala</button>
+        <div id="seccion-registro">
+            <input type="text" id="nombre-jugador" placeholder="Escribe tu nombre..." />
+            <button onclick="registrar()">Unirse al Juego</button>
+        </div>
+
+        <div id="seccion-juego" style="display:none;">
+            <h4>Jugadores Conectados:</h4>
+            <ul id="lista-jugadores"></ul>
+
+            <div id="estado-pantalla">Esperando inicio...</div>
+
+            <button id="btn-iniciar" onclick="iniciarRonda()">¡Iniciar Ronda!</button>
+
+            <div id="caja-penitencia"></div>
+        </div>
     </div>
 
-    <div id="pantallaJuego" style="display:none;">
-      <h2 id="estado">Esperando inicio...</h2>
-      <div id="poseedor" class="pelota">---</div>
-      <div id="seccionPenitencia" class="penitencia" style="display:none;">
-        <strong>Penitencia:</strong>
-        <p id="textoPenitencia"></p>
-      </div>
-      <br><br>
-      <button onclick="iniciar()">¡Iniciar Ronda!</button>
-    </div>
-  </div>
+    <script>
+        const socket = io();
+        let miNombre = "";
 
-  <script>
-    const socket = io();
-
-    // Sintetizador de sonido con Web Audio API
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-    function reproducirSonidoTingo() {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.1);
-    }
-
-    function reproducirSonidoTango() {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.8);
-    }
-
-    function unirme() {
-      const nombre = document.getElementById('nombreInput').value.trim();
-      if (nombre) {
-        if (audioCtx.state === 'suspended') {
-          audioCtx.resume();
+        // Generador de sonido continuo (Tingo / Tango) usando Web Audio API
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function sonarTingo() {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
         }
-        socket.emit('unirse', nombre);
-        document.getElementById('registro').style.display = 'none';
-        document.getElementById('pantallaJuego').style.display = 'block';
-      }
-    }
 
-    function iniciar() {
-      socket.emit('iniciarJuego');
-    }
+        function sonarTango() {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 1.2);
+        }
 
-    socket.on('estadoPelota', (data) => {
-      document.getElementById('seccionPenitencia').style.display = 'none';
-      document.getElementById('estado').innerText = 'Tingo, tingo, tingo...';
-      document.getElementById('poseedor').innerText = '👉 ' + data.poseedor.nombre;
-      reproducirSonidoTingo();
-    });
+        function registrar() {
+            const nombre = document.getElementById('nombre-jugador').value.trim();
+            if (!nombre) return alert("Por favor ingresa tu nombre");
+            miNombre = nombre;
+            
+            socket.emit('unirse', nombre);
+            document.getElementById('seccion-registro').style.display = 'none';
+            document.getElementById('seccion-juego').style.display = 'block';
+        }
 
-    socket.on('tangoFinal', (data) => {
-      document.getElementById('estado').innerText = '¡TANGO! 🛑';
-      document.getElementById('poseedor').innerText = 'Le tocó a: ' + data.perdedor.nombre;
-      document.getElementById('textoPenitencia').innerText = data.penitencia;
-      document.getElementById('seccionPenitencia').style.display = 'block';
-      reproducirSonidoTango();
-    });
-  </script>
+        function iniciarRonda() {
+            document.getElementById('caja-penitencia').style.display = 'none';
+            socket.emit('iniciarJuego');
+        }
+
+        socket.on('actualizarJugadores', (jugadores) => {
+            const lista = document.getElementById('lista-jugadores');
+            lista.innerHTML = jugadores.map(j => `<li>${j.nombre}</li>`).join('');
+        });
+
+        socket.on('estadoPelota', (data) => {
+            document.getElementById('estado-pantalla').innerHTML = `⚽ La pelota la tiene: <br><b style="color:#00fff5; font-size:24px;">${data.poseedor.nombre}</b>`;
+            sonarTingo();
+        });
+
+        socket.on('tangoFinal', (data) => {
+            sonarTango();
+            document.getElementById('estado-pantalla').innerHTML = `💥 ¡TANGO! 💥`;
+            
+            const caja = document.getElementById('caja-penitencia');
+            caja.style.display = 'block';
+            caja.innerHTML = `⚠️ <b>${data.perdedor.nombre}</b> le toca responder:<br><br><i>"${data.penitencia}"</i>`;
+        });
+    </script>
 </body>
 </html>
