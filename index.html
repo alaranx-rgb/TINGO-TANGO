@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Cambia el nombre de la pestaña del navegador -->
     <title>Tingo Tango - Compraventa Internacional</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
@@ -102,9 +101,13 @@
 <body>
 
     <div class="container">
-        <!-- AQUÍ CAMBIAS EL TÍTULO PRINCIPAL DE LA INTERFAZ -->
         <h1>TINGO TANGO</h1>
         <h3>Contrato de Compraventa Internacional</h3>
+
+        <!-- Pista de audio cargada al 100% de volumen -->
+        <audio id="musica-fondo" loop preload="auto">
+            <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mpeg">
+        </audio>
 
         <div id="seccion-registro">
             <input type="text" id="nombre-jugador" placeholder="Escribe tu nombre..." />
@@ -126,25 +129,14 @@
     <script>
         const socket = io();
         let miNombre = "";
+        const musica = document.getElementById('musica-fondo');
+        
+        // Ajustamos el volumen al MÁXIMO del navegador (1.0)
+        musica.volume = 1.0;
 
-        // Generador de sonido continuo (Tingo / Tango) usando Web Audio API
+        // Efecto potente para el TANGO
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        function sonarTingo() {
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.15);
-        }
-
         function sonarTango() {
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
@@ -152,12 +144,13 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+            // Volumen del tono final al máximo
+            gain.gain.setValueAtTime(1.0, audioCtx.currentTime);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
-            osc.stop(audioCtx.currentTime + 1.2);
+            osc.stop(audioCtx.currentTime + 1.5);
         }
 
         function registrar() {
@@ -165,6 +158,12 @@
             if (!nombre) return alert("Por favor ingresa tu nombre");
             miNombre = nombre;
             
+            // Activa el motor de audio con interacción del usuario
+            musica.play().then(() => {
+                musica.pause();
+                musica.currentTime = 0;
+            }).catch(e => console.log(e));
+
             socket.emit('unirse', nombre);
             document.getElementById('seccion-registro').style.display = 'none';
             document.getElementById('seccion-juego').style.display = 'block';
@@ -182,10 +181,19 @@
 
         socket.on('estadoPelota', (data) => {
             document.getElementById('estado-pantalla').innerHTML = `⚽ La pelota la tiene: <br><b style="color:#00fff5; font-size:24px;">${data.poseedor.nombre}</b>`;
-            sonarTingo();
+            
+            // Reproducir música a todo volumen mientras rueda la pelota
+            if (musica.paused) {
+                musica.volume = 1.0;
+                musica.play().catch(e => console.log(e));
+            }
         });
 
         socket.on('tangoFinal', (data) => {
+            // Cortar la música al instante
+            musica.pause();
+            musica.currentTime = 0;
+            
             sonarTango();
             document.getElementById('estado-pantalla').innerHTML = `💥 ¡TANGO! 💥`;
             
