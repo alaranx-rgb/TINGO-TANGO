@@ -1,0 +1,68 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
+
+// Servir el archivo index.html
+app.use(express.static(path.join(__dirname)));
+
+let jugadores = [];
+let indiceActual = 0;
+let enJuego = false;
+
+const penitencias = [
+  "Canta el coro de tu canción favorita.",
+  "Haz 10 sentadillas mientras cuentas en inglés.",
+  "Muestra la última foto de tu galería.",
+  "Imita a un personaje famoso durante 30 segundos.",
+  "Cuenta un chiste o haz una imitación rápida.",
+  "Baila durante 15 segundos sin música."
+];
+
+io.on('connection', (socket) => {
+  console.log('Jugador conectado:', socket.id);
+
+  socket.on('unirse', (nombre) => {
+    jugadores.push({ id: socket.id, nombre });
+    io.emit('actualizarJugadores', jugadores);
+  });
+
+  socket.on('iniciarJuego', () => {
+    if (jugadores.length < 2 || enJuego) return;
+    enJuego = true;
+    indiceActual = 0;
+    
+    // Tiempo aleatorio entre 10 y 25 segundos
+    const tiempoTango = Math.floor(Math.random() * 15000) + 10000;
+    
+    // Intervalo para pasar la pelota ("tingo")
+    const intervaloTingo = setInterval(() => {
+      indiceActual = (indiceActual + 1) % jugadores.length;
+      io.emit('estadoPelota', { poseedor: jugadores[indiceActual] });
+    }, 800);
+
+    // Detención aleatoria ("tango")
+    setTimeout(() => {
+      clearInterval(intervaloTingo);
+      enJuego = false;
+      const penitenciaElegida = penitencias[Math.floor(Math.random() * penitencias.length)];
+      
+      io.emit('tangoFinal', {
+        perdedor: jugadores[indiceActual],
+        penitencia: penitenciaElegida
+      });
+    }, tiempoTango);
+  });
+
+  socket.on('disconnect', () => {
+    jugadores = jugadores.filter(j => j.id !== socket.id);
+    io.emit('actualizarJugadores', jugadores);
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tingo Tango Web</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #121212; color: white; padding: 20px; }
+    .card { background: #1e1e1e; border-radius: 16px; padding: 25px; margin: 20px auto; max-width: 400px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+    input { padding: 12px; width: 70%; border-radius: 8px; border: 1px solid #333; margin-bottom: 10px; font-size: 16px; text-align: center; }
+    button { background: #e63946; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+    button:hover { background: #d62828; }
+    .pelota { font-size: 2rem; color: #ffb703; font-weight: bold; margin-top: 15px; }
+    .penitencia { background: #2b2b2b; border-left: 4px solid #e63946; padding: 15px; margin-top: 15px; border-radius: 6px; text-align: left; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>Tingo Tango 🤾</h1>
+
+    <div id="registro">
+      <input type="text" id="nombreInput" placeholder="Ingresa tu nombre">
+      <br>
+      <button onclick="unirme()">Unirme a la Sala</button>
+    </div>
+
+    <div id="pantallaJuego" style="display:none;">
+      <h2 id="estado">Esperando inicio...</h2>
+      <div id="poseedor" class="pelota">---</div>
+      <div id="seccionPenitencia" class="penitencia" style="display:none;">
+        <strong>Penitencia:</strong>
+        <p id="textoPenitencia"></p>
+      </div>
+      <br><br>
+      <button onclick="iniciar()">¡Iniciar Ronda!</button>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+
+    // Sintetizador de sonido con Web Audio API
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function reproducirSonidoTingo() {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1);
+    }
+
+    function reproducirSonidoTango() {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.8);
+    }
+
+    function unirme() {
+      const nombre = document.getElementById('nombreInput').value.trim();
+      if (nombre) {
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        socket.emit('unirse', nombre);
+        document.getElementById('registro').style.display = 'none';
+        document.getElementById('pantallaJuego').style.display = 'block';
+      }
+    }
+
+    function iniciar() {
+      socket.emit('iniciarJuego');
+    }
+
+    socket.on('estadoPelota', (data) => {
+      document.getElementById('seccionPenitencia').style.display = 'none';
+      document.getElementById('estado').innerText = 'Tingo, tingo, tingo...';
+      document.getElementById('poseedor').innerText = '👉 ' + data.poseedor.nombre;
+      reproducirSonidoTingo();
+    });
+
+    socket.on('tangoFinal', (data) => {
+      document.getElementById('estado').innerText = '¡TANGO! 🛑';
+      document.getElementById('poseedor').innerText = 'Le tocó a: ' + data.perdedor.nombre;
+      document.getElementById('textoPenitencia').innerText = data.penitencia;
+      document.getElementById('seccionPenitencia').style.display = 'block';
+      reproducirSonidoTango();
+    });
+  </script>
+</body>
+</html>
