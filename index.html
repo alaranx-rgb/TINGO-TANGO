@@ -104,9 +104,9 @@
         <h1>TINGO TANGO</h1>
         <h3>Contrato de Compraventa Internacional</h3>
 
-        <!-- Pista de audio cargada desde el servidor público -->
-        <audio id="cancion-pina" loop preload="auto" crossorigin="anonymous">
-            <source src="https://files.catbox.moe/97a2s2.mp3" type="audio/mpeg">
+        <!-- Carga de la canción desde la carpeta local -->
+        <audio id="cancion-pina" loop preload="auto">
+            <source src="se-vale-todo.mp3" type="audio/mpeg">
         </audio>
 
         <div id="seccion-registro">
@@ -131,7 +131,6 @@
         let miNombre = "";
         const musica = document.getElementById('cancion-pina');
 
-        // Configurar volumen al máximo (1.0)
         musica.volume = 1.0;
 
         function registrar() {
@@ -139,11 +138,11 @@
             if (!nombre) return alert("Por favor ingresa tu nombre");
             miNombre = nombre;
             
-            // Activa el permiso explícito de audio del navegador en el primer clic
+            // Habilita el permiso de audio en el dispositivo
             musica.play().then(() => {
                 musica.pause();
                 musica.currentTime = 0;
-            }).catch(e => console.log("Audio desbloqueado por interacción:", e));
+            }).catch(e => console.log("Audio habilitado"));
 
             socket.emit('unirse', nombre);
             document.getElementById('seccion-registro').style.display = 'none';
@@ -163,15 +162,12 @@
         socket.on('estadoPelota', (data) => {
             document.getElementById('estado-pantalla').innerHTML = `⚽ La pelota la tiene: <br><b style="color:#00fff5; font-size:24px;">${data.poseedor.nombre}</b>`;
             
-            // Iniciar reproducción de la canción de Los De La Piña automáticamente
             if (musica.paused) {
-                musica.currentTime = 0;
                 musica.play().catch(e => console.log("Error al reproducir audio:", e));
             }
         });
 
         socket.on('tangoFinal', (data) => {
-            // Detener la canción inmediatamente al salir el TANGO
             musica.pause();
             musica.currentTime = 0;
             
